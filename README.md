@@ -22,7 +22,7 @@ and [Twitter](https://twitter.com).
 # Installation
 
 * Install [Tampermonkey](https://tampermonkey.net/) extension, it's available for Chrome, Microsoft Edge, Safari, Opera Next, and Firefox.
-* Download the script: https://github.com/evazion/translate-pixiv-tags/raw/master/translate-pixiv-tags.user.js
+* Download the script: https://github.com/7nik/tpt-ap/raw/master/tpt-ap.user.js
 * An installation prompt will appear. Accept the installation.
 
 # Screenshots
