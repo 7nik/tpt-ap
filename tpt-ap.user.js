@@ -6,8 +6,8 @@
 // @description  Translates tags on Pixiv, Nijie, NicoSeiga, Tinami, and BCY to Danbooru tags.
 // @homepageURL  https://github.com/7nik/tpt-ap
 // @supportURL   https://github.com/7nik/tpt-ap/issues
-// @updateURL    https://github.com/7nik/tpt-ap/raw/master/translate-pixiv-tags.user.js
-// @downloadURL  https://github.com/7nik/tpt-ap/raw/master/translate-pixiv-tags.user.js
+// @updateURL    https://github.com/7nik/tpt-ap/raw/master/tpt-ap.user.js
+// @downloadURL  https://github.com/7nik/tpt-ap/raw/master/tpt-ap.user.js
 // @match        *://www.pixiv.net/*
 // @match        *://dic.pixiv.net/*
 // @match        *://nijie.info/*
