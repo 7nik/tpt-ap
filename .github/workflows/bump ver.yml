@@ -1,0 +1,21 @@
+name: Bump userscript version
+on:
+  push:
+    branches: [ master ]
+    path: [ tpt-ap.user.js ]
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Update version
+        run: sed -i "s/\/\/ @version\s\+[0-9]\+/\/\/ @version      $(date -u +%Y%m%d%H%M%S)/" tpt-ap.user.js
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          message: 'Bump version'
+          add: tpt-ap.user.js
