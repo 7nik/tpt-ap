@@ -2,7 +2,7 @@
 // ==UserScript==
 // @name         Translate Pixiv Tags for Anime-Pictures
 // @author       7nik, evazion, BrokenEagle, hdk5
-// @version      20241027221149
+// @version      20241027221405
 // @description  Translates tags on Pixiv, Nijie, NicoSeiga, Tinami, and BCY to Danbooru tags.
 // @homepageURL  https://github.com/7nik/tpt-ap
 // @supportURL   https://github.com/7nik/tpt-ap/issues
