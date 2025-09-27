@@ -8,29 +8,32 @@
 // @supportURL   https://github.com/7nik/tpt-ap/issues
 // @updateURL    https://github.com/7nik/tpt-ap/raw/master/tpt-ap.user.js
 // @downloadURL  https://github.com/7nik/tpt-ap/raw/master/tpt-ap.user.js
-// @match        *://www.pixiv.net/*
-// @match        *://dic.pixiv.net/*
-// @match        *://nijie.info/*
-// @match        *://seiga.nicovideo.jp/*
-// @match        *://www.tinami.com/*
-// @match        *://*.deviantart.com/*
-// @match        *://*.hentai-foundry.com/*
-// @match        *://twitter.com/*
-// @match        *://x.com/*
-// @match        *://mobile.twitter.com/*
-// @match        *://tweetdeck.twitter.com/*
 // @match        *://*.artstation.com/*
-// @match        *://saucenao.com/*
-// @match        *://pawoo.net/*
 // @match        *://baraag.net/*
-// @match        *://*.fanbox.cc/*
-// @match        *://misskey.io/*
-// @match        *://misskey.art/*
-// @match        *://misskey.design/*
-// @match        *://skeb.jp/*
-// @match        *://fantia.jp/*
+// @match        *://bsky.app/*
 // @match        *://ci-en.net/*
 // @match        *://ci-en.dlsite.com/*
+// @match        *://*.deviantart.com/*
+// @match        *://*.fanbox.cc/*
+// @match        *://fantia.jp/*
+// @match        *://*.hentai-foundry.com/*
+// @match        *://misskey.art/*
+// @match        *://misskey.design/*
+// @match        *://misskey.io/*
+// @match        *://nijie.info/*
+// @match        *://pawoo.net/*
+// @match        *://dic.pixiv.net/*
+// @match        *://www.pixiv.net/*
+// @match        *://saucenao.com/*
+// @match        *://seiga.nicovideo.jp/*
+// @match        *://skeb.jp/*
+// @match        *://www.tinami.com/*
+// @match        *://twitter.com/*
+// @match        *://mobile.twitter.com/*
+// @match        *://tweetdeck.twitter.com/*
+// @match        *://m.weibo.cn/*
+// @match        *://www.weibo.com/*
+// @match        *://x.com/*
 // @grant        GM_getResourceText
 // @grant        GM_getResourceURL
 // @grant        GM_xmlhttpRequest
@@ -40,6 +43,7 @@
 // @grant        GM_addStyle
 // @grant        GM_registerMenuCommand
 // @grant        GM_addElement
+// @grant        GM.setClipboard
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/psl/1.9.0/psl.min.js
 // @require      https://raw.githubusercontent.com/rafaelw/mutation-summary/421110f84178aa9e4098b38df83f727e5aea3d97/src/mutation-summary.js
@@ -48,7 +52,7 @@
 // @require      https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore.js
 // @require      https://github.com/evazion/translate-pixiv-tags/raw/lib-20221207/lib/tooltip.js
 // @require      https://github.com/evazion/translate-pixiv-tags/raw/lib-20240111/lib/jquery-gm-shim.js
-// @require      https://github.com/evazion/translate-pixiv-tags/raw/master/translate-pixiv-tags.user.js
+// @require      https://github.com/evazion/translate-pixiv-tags/raw/master/translate-pixiv-tags.user.js?v=1
 // @resource     danbooru_icon https://github.com/evazion/translate-pixiv-tags/raw/resource-20190903/resource/danbooru-icon.ico
 // @resource     settings_icon https://github.com/evazion/translate-pixiv-tags/raw/resource-20190903/resource/settings-icon.svg
 // @resource     globe_icon https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/svgs/solid/globe.svg
@@ -71,7 +75,7 @@
     debuglog memoizeKey noIndents getResourceUrl tooManyNetworkErrors normalizeProfileURL
     queueNetworkRequestMemoized addDanbooruArtist addTooltip buildArtistTooltip findAndTranslate
     chooseBackgroundColorScheme showSettings attachShadow timeToAgo formatBytes getImage
-    $messageContainer renderedArtistsCache */
+    $messageContainer renderedTagsCache, renderedArtistsCache */
 
 // @ts-expect-error - it has no exports or import but types are get correctly
 /** @typedef {import("./node_modules/mutation-summary/src/mutation-summary")} */
@@ -100,11 +104,15 @@ const PROGRAM_CSS2 = /* CSS */`
     }
 }
 
-.ex-artist-tag.ap a:not(#id) {
+.ex-artist-tag.ap a:first-child:not(#id) {
     color: var(--tpt-ap-artist) !important;
 }
+.ex-artist-tag.ap a:first-child::after {
+    content: none;
+}
 .ex-artist-tag::before,
-.ex-artist-tag a+a::before {
+.ex-artist-tag a+a::before,
+.ex-translated-tags .ap::before{
     content: "";
     display: inline-block;
     background-image: url(${getResourceUrl("danbooru_icon", true)});
@@ -114,8 +122,22 @@ const PROGRAM_CSS2 = /* CSS */`
     height: 0.8em;
     vertical-align: middle;
 }
-.ex-artist-tag.ap::before {
+.ex-artist-tag.ap::before,
+.ex-translated-tags .ap::before {
     background-image: url(${getResourceUrl("ap_icon", true)});
+}
+.ex-translated-tags {
+    position: relative;
+}
+
+.ex-translated-tags:not(:hover) .ap {
+    display: none !important;
+}
+.ex-translated-tags .ap {
+    display: inline-block;
+    position: absolute;
+    left: 100%;
+    padding: 0.4em !important;
 }
 `;
 
@@ -279,6 +301,62 @@ async function makeRequest (method, url, data) {
     throw new Error(errorMsg);
 }
 
+// OVERWRITES
+/**
+ * Attaches translations to the target element
+ * @param {JQuery} $target The element to attach the translation
+ * @param {TranslatedTag[]} tags Translated tags
+ * @param {TranslationOptionsFull} options Translation options
+ */
+// eslint-disable-next-line no-unused-vars
+function addDanbooruTags ($target, tags, options) {
+    if (tags.length === 0) return;
+
+    const {
+        onadded = null,
+        tagPosition: {
+            insertTag = TAG_POSITIONS.afterend.insertTag,
+            findTag = TAG_POSITIONS.afterend.findTag,
+        } = {},
+        ruleName,
+    } = options;
+    let { classes = "" } = options;
+    classes = `ex-translated-tags ${classes}`;
+
+    const key = tags.map((tag) => tag.name).join("");
+    if (!(key in renderedTagsCache)) {
+        renderedTagsCache[key] = $(noIndents/* HTML */`
+            <span class="${classes}">
+                ${tags.map((tag) => noIndents/* HTML */`
+                        <a class="ex-translated-tag-category-${tag.category}"
+                           href="${BOORU}/posts?tags=${encodeURIComponent(tag.name)}"
+                           target="_blank">
+                                ${_.escape(tag.prettyName)}
+                        </a>
+                        <a class="ap"
+                           href="${AP_SITE}/posts?search_tag=${encodeURIComponent(tag.prettyName)}"
+                           target="_blank"
+                        ></a>
+                    </a>
+                `)
+                .join(", ")}
+            </span>
+        `);
+    }
+    const $tagsContainer = renderedTagsCache[key].clone().prop("className", classes);
+
+    const $duplicates = findTag($target)
+        .filter((i, el) => el.textContent?.trim() === $tagsContainer.text().trim());
+    if ($duplicates.length > 0) {
+        return;
+    }
+
+    if (DEBUG) $tagsContainer.attr("rulename", ruleName || "");
+    insertTag($target, $tagsContainer);
+
+    if (onadded) onadded($tagsContainer, options);
+}
+
 /**
  * @typedef {object} APTag
  * @prop {number} id
@@ -310,7 +388,7 @@ async function findAnimePictureArtistByUrl (profileUrl) {
     });
     return Promise.all(artists.tags
         .filter((tag) => tag.description_en.split(/\n|\r/).some((line) => (
-            line.replace(/^https?/, "") === url
+            line.toLowerCase().replace(/^https?/, "") === url
         )))
         .map((tag) => (tag.alias
             ? makeRequest("GET", `${AP_API}/api/v3/tags/${tag.alias}`, {}).then((data) => data.tag)
@@ -464,6 +542,11 @@ function addAnimePictureArtist ($target, apArtist, dbArtist, options) {
         `);
     }
     const $tag = renderedArtistsCache[apArtist.id].clone().prop("className", classes);
+    $tag.click((ev) => {
+        if (ev.target === $tag[0]) {
+            GM.setClipboard(apArtist.tag, "text");
+        }
+    });
     if (DEBUG) $tag.attr("rulename", ruleName || "");
     insertTag($target, $tag);
     addTooltip(
@@ -701,30 +784,9 @@ const AP_IMAGES = `https://opreviews.anime-pictures.net`;
  * @param {ApPost} post
  * @param {"sp"|"cp"|"bp"} size
  */
-function genPreviewUrl (post, size) {
-    const folder = post.md5.slice(0, 3);
-
-    if (post.ext === ".gif") {
-        return `${AP_IMAGES}/${folder}/${post.md5}_${size}.gif`;
-    }
-
-    if (post.have_alpha) {
-        return `${AP_IMAGES}/${folder}/${post.md5}_${size}.png`;
-    }
-
-    return `${AP_IMAGES}/${folder}/${post.md5}_${size}.jpg`;
-}
-
-/**
- * @param {ApPost} post
- * @param {"sp"|"cp"|"bp"} size
- */
 function genPreviewUrlAvif (post, size) {
-    if (post.ext === ".gif") {
-        return `${genPreviewUrl(post, size)}.webp`;
-    }
-
-    return `${genPreviewUrl(post, size)}.avif`;
+    const folder = post.md5.slice(0, 3);
+    return `${AP_IMAGES}/${folder}/${post.md5}_${size}.avif`;
 }
 
 /**
@@ -828,19 +890,36 @@ function initializeSauceNAO () {
         const node = el.nextSibling;
         // if not a text node
         if (!node || node.nodeType !== 3) return null;
-        return node.textContent?.trim() ?? null;
+        return node.textContent?.trim() ? node.textContent.split(",") : null;
+    }
+
+    /**
+     * @param {JQuery} $el
+     */
+    function cleanUpFollowingText ($el) {
+        const node = $el[0].nextSibling;
+        // if not a text node
+        if (!node || node.nodeType !== 3) return;
+        node.textContent = node.textContent
+            ?.replace($el[0].textContent, "")
+            .replace(/(, ){2,}/, ", ")
+            .replace(/^, |, $/, "")
+            ?? "";
     }
 
     findAndTranslate("artistByName", "strong", {
         predicate: ".resulttitle strong",
         tagPosition: TAG_POSITIONS.afterend,
         toTagName: getFollowingText,
-        onadded: ($el) => $el[0].nextSibling?.remove(),
+        onadded: cleanUpFollowingText,
         asyncMode: true,
-        classes: "inline",
+        classes: "inline comma",
         css: /* CSS */`
             .ex-artist-tag + .target {
                 display: none;
+            }
+            .ex-artist-tag.comma::after {
+              content: ", ";
             }
         `,
         ruleName: "artist by name",
@@ -850,9 +929,9 @@ function initializeSauceNAO () {
         predicate: ".resultcontentcolumn strong",
         tagPosition: TAG_POSITIONS.afterend,
         toTagName: getFollowingText,
-        onadded: ($el) => $el[0].nextSibling?.remove(),
+        onadded: cleanUpFollowingText,
         asyncMode: true,
-        classes: "no-brackets",
+        classes: "no-brackets comma",
         css: /* CSS */`
             .ex-translated-tags {
                 margin: 0;
@@ -860,8 +939,11 @@ function initializeSauceNAO () {
             .ex-translated-tags + .target {
                 display: none;
             }
+            .ex-translated-tags.comma::after {
+              content: ", ";
+            }
         `,
-        ruleName: "tags",
+        ruleName: "tags strong",
     });
 
     findAndTranslate("tag", "br", {
@@ -879,7 +961,7 @@ function initializeSauceNAO () {
                 display: none;
             }
         `,
-        ruleName: "tags",
+        ruleName: "tags br",
     });
 }
 

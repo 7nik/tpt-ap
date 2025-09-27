@@ -84,6 +84,7 @@ type TranslatedArtist = ResponseArtist & {
     encodedName: string,
 }
 
+
 type TagPosition = {
     insertTag: ($container: JQuery, $elem: JQuery) => void,
     findTag: ($container: JQuery) => JQuery,
@@ -101,6 +102,11 @@ declare global {
         other_names: string[],
         urls: Array<{ url: string, is_active: boolean }>,
     }
+    type TranslatedTag = {
+        name:string,
+        prettyName:string,
+        category:number,
+    }
     type TooltipInstance = {tooltip: HTMLElement, content: HTMLElement, target: HTMLElement};
     type TranslationOptions = {
         mode: "tag" | "artist" | "artistByName",
@@ -109,7 +115,7 @@ declare global {
         requiredAttributes?: string|null,
         predicate?: string | ((el:HTMLElement) => boolean) | null,
         toProfileUrl?: (el:HTMLElement) => string | string[] | null,
-        toTagName?: (el:HTMLElement) => string | null,
+        toTagName?: (el:HTMLElement) => string | string[] | null,
         tagPosition?: TagPosition,
         classes?: string,
         css?: string,
@@ -196,6 +202,7 @@ declare global {
      * @param options Translation options
      */
     var addDanbooruArtist: ($target: JQuery, rawArtist: ResponseArtist, options: TranslationOptionsFull) => void;
+    var renderedTagsCache: Record<string, JQuery>;
     var addTooltip: (target: HTMLElement, contentProvider: (tip: TooltipInstance) => void) => void;
     /**
      * Get a color similar to the background under the element and theme type
