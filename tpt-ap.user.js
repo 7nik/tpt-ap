@@ -34,6 +34,8 @@
 // @match        *://m.weibo.cn/*
 // @match        *://www.weibo.com/*
 // @match        *://x.com/*
+// @match        *://danbooru.donmai.us/posts*
+// @match        *://danbooru.donmai.us/artists/*
 // @grant        GM_getResourceText
 // @grant        GM_getResourceURL
 // @grant        GM_xmlhttpRequest
@@ -69,7 +71,7 @@
 /* spell-checker: enable */
 // cSpell:ignoreRegExp [-\.#]\w+
 
-/* globals _  */
+/* globals _ $ */
 /* globals SETTINGS_SCHEMA MAX_NETWORK_RETRIES DISPLAY_NETWORK_ERRORS BOORU DEBUG TAG_POSITIONS
     ARTIST_TOOLTIP_CSS ARTIST_POST_PREVIEW_LIMIT SHOW_PREVIEW_RATING DOMAIN_USES_CSP
     debuglog memoizeKey noIndents getResourceUrl tooManyNetworkErrors normalizeProfileURL
@@ -966,3 +968,39 @@ function initializeSauceNAO () {
 }
 
 GM_addStyle(PROGRAM_CSS2);
+
+// special handling
+
+async function initializeDanbooru () {
+    if (window.location.pathname.startsWith("/posts/")) {
+        $("#tag-list .artist-tag-list .search-tag").each(async (_, el) => {
+            const [artist] = await findAnimePictureArtistByName(el.textContent);
+            if (!artist) return;
+            addAnimePictureArtist($(el), artist, null, { classes: "inline" });
+            if (el.textContent === artist.tag) {
+                el.nextElementSibling.firstElementChild.textContent = "";
+            }
+        });
+    } else if (window.location.pathname === "/posts") {
+        if (!$("#post-sections a[href^='/artists/']").length) return;
+        const [el] = $("#excerpt > div > h6 + ul > :first-child > a:last-child");
+        if (!el) return;
+        const [artist] = await findAnimePictureArtistByUrl(el.href);
+        if (!artist) return;
+        addAnimePictureArtist($(el), artist, null, { classes: "inline" });
+    } else if (window.location.pathname.startsWith("/artists/")) {
+        const [el] = $("#c-artists > #a-show > div > h6 + ul > :first-child > a:last-child");
+        if (!el) return;
+        const [artist] = await findAnimePictureArtistByUrl(el.href);
+        if (!artist) return;
+        addAnimePictureArtist($(el), artist, null, { classes: "inline" });
+    }
+}
+
+if (window.location.host.endsWith(".donmai.us")) {
+    if (document.readyState === "loading") {
+        window.addEventListener("DOMContentLoaded", initializeDanbooru);
+    } else {
+        initializeDanbooru();
+    }
+}
