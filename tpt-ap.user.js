@@ -381,7 +381,7 @@ function addDanbooruTags ($target, tags, options) {
  */
 async function findAnimePictureArtistByUrl (profileUrl) {
     // FIXME some links are still HTTP
-    const url = profileUrl.replace(/^https?/, "");
+    const url = profileUrl.replace("https://x.com/", "https://twitter.com/").replace(/^https?/, "");
     /**
      * @type {{tags:APTag[]}}
      */
