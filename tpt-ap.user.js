@@ -390,8 +390,8 @@ async function findAnimePictureArtistByUrl (profileUrl) {
         type: 4, // artist
     });
     return Promise.all(artists.tags
-        .filter((tag) => tag.description_en.split(/\n|\r/).some((line) => (
-            line.toLowerCase().replace(/^https?/, "") === url
+        .filter((tag) => tag.description_en.replace("link:", "").replaceAll(/\[\/?s\]/gi, "").trim().split(/\n|\r/).some((line) => (
+            line.trim().toLowerCase().replace(/^https?/, "") === url
         )))
         .map((tag) => (tag.alias
             ? makeRequest("GET", `${AP_API}/api/v3/tags/${tag.alias}`, {}).then((data) => data.tag)
@@ -647,7 +647,7 @@ const ARTIST_TOOLTIP_CSS2 = /* CSS */`
  * @param {APTag} artist The artist data
  */
 async function buildApArtistTooltipContent (artist) {
-    const encodedName = encodeURIComponent(artist.tag).replaceAll("%20", "+");
+    const encodedName = encodeURIComponent(artist.tag).replaceAll("%20", " ");
     const {
         posts,
         posts_count: postsCount,
@@ -866,12 +866,12 @@ function initializeSauceNAO () {
     // https://saucenao.com/search.php?db=999&url=http%3A%2F%2Fmedibangpaint.com%2Fwp-content%2Fuploads%2F2015%2F05%2Fgallerylist-04.jpg
     // https://saucenao.com/search.php?db=999&url=http%3A%2F%2Fpastyle.net%2FPLFG-0001_MelangelicTone%2Fimage%2Fartwork_MelangelicTone.jpg
     findAndTranslate("artist", "a", {
-        predicate: [
+        predicate: (el) => $(el).is([
             "strong:contains('Member:')+a",
             "strong:contains('Author:')+a",
             "strong:contains('Twitter:')+a",
             "strong:contains('User ID:')+a",
-        ].join(","),
+        ].join(",")),
         classes: "inline",
         ruleName: "artist by link",
         asyncMode: true,
